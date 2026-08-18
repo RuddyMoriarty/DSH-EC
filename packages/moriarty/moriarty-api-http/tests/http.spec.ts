@@ -120,18 +120,22 @@ describe('MoriartyHttpProvider requests', () => {
     const fetchMock = vi.fn(async () => jsonResponse({ content: [] }))
     vi.stubGlobal('fetch', fetchMock)
     await provider().searchFranceAides({ search: '', page: 2, size: 5 })
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://api.themoriarty.test/v1/france-aides?page=2&size=5')
+    const [searchUrl] = fetchMock.mock.calls[0] as unknown as [string]
+    expect(searchUrl).toBe('https://api.themoriarty.test/v1/france-aides?page=2&size=5')
   })
 
   it('omits the query string when paging fields are absent', async () => {
     const fetchMock = vi.fn(async () => jsonResponse({ content: [] }))
     vi.stubGlobal('fetch', fetchMock)
     await provider().listBusinesses({ organizationId: orgId })
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://api.themoriarty.test/v1/businesses/org-1/list')
+    const [listUrl] = fetchMock.mock.calls[0] as unknown as [string]
+    expect(listUrl).toBe('https://api.themoriarty.test/v1/businesses/org-1/list')
     await provider().listCapsuleFiles(businessRequest)
-    expect(fetchMock.mock.calls[1]?.[0]).toBe('https://api.themoriarty.test/v1/capsule/org-1/biz-1/files')
+    const [capsuleUrl] = fetchMock.mock.calls[1] as unknown as [string]
+    expect(capsuleUrl).toBe('https://api.themoriarty.test/v1/capsule/org-1/biz-1/files')
     await provider().searchFranceAides({})
-    expect(fetchMock.mock.calls[2]?.[0]).toBe('https://api.themoriarty.test/v1/france-aides')
+    const [aidesUrl] = fetchMock.mock.calls[2] as unknown as [string]
+    expect(aidesUrl).toBe('https://api.themoriarty.test/v1/france-aides')
   })
 
   it('combines a caller abort signal with the timeout', async () => {
@@ -331,7 +335,8 @@ describe('moriarty-api-http plugin registration', () => {
       vi.stubGlobal('fetch', fetchMock)
       httpPlugin.apply(envCtx, {})
       await envCtx.moriarty.listOrganizations()
-      expect(fetchMock.mock.calls[0]?.[0]).toBe('https://api.themoriarty.env/v1/organizations/me')
+      const [envUrl] = fetchMock.mock.calls[0] as unknown as [string]
+      expect(envUrl).toBe('https://api.themoriarty.env/v1/organizations/me')
     } finally {
       if (prevToken === undefined) delete process.env.MORIARTY_ACCESS_TOKEN
       else process.env.MORIARTY_ACCESS_TOKEN = prevToken

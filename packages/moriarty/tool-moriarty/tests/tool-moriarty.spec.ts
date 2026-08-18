@@ -28,25 +28,25 @@ const orgId = OrganizationId('org-1')
 const bizId = BusinessId('biz-1')
 
 const organization = { id: orgId, name: 'acme', displayName: 'Acme' }
-const business = {
+const businessWithoutSiret = {
   id: bizId,
   name: 'Client',
   organizationId: orgId,
   archived: false,
   tags: [],
   auditUpdatedAt: '2026-01-01T00:00:00Z',
-  siret: '123',
 }
+const business = { ...businessWithoutSiret, siret: '123' }
 const emptyPage = { content: [], totalElements: 0, number: 0, size: 0, empty: true }
-const diagnostic = {
+const diagnosticWithoutEligible = {
   id: 'diag-1',
   businessId: bizId,
   businessName: 'Client',
   status: 'DONE',
   diagnosticType: 'AIDES',
   startedAt: 't',
-  totalEligible: 2,
 }
+const diagnostic = { ...diagnosticWithoutEligible, totalEligible: 2 }
 const file = {
   id: 'file-1',
   name: 'bilan.pdf',
@@ -103,18 +103,18 @@ describe('formatting', () => {
     expect(formatBusinessPage({ ...emptyPage, content: [business], empty: false }, 'org-1'))
       .toContain('SIRET 123')
     expect(formatBusinessPage(
-      { ...emptyPage, content: [{ ...business, siret: undefined }], empty: false },
+      { ...emptyPage, content: [businessWithoutSiret], empty: false },
       'org-1',
     )).not.toContain('SIRET')
     expect(formatBusinessPage(emptyPage, 'org-1')).toContain('No businesses')
     expect(formatBusinessPage({ ...emptyPage, empty: false }, 'org-1')).toContain('No businesses')
-    expect(formatBusiness({ ...business, siret: undefined })).not.toContain('SIRET')
+    expect(formatBusiness(businessWithoutSiret)).not.toContain('SIRET')
     expect(formatBusiness(business)).toContain('GET /v1/businesses/org-1/biz-1')
   })
 
   it('renders diagnostics, capsule files, and aides, including empty cases', () => {
     expect(formatDiagnostic(diagnostic, 'org-1', 'biz-1')).toContain('eligible 2')
-    expect(formatDiagnostic({ ...diagnostic, totalEligible: undefined }, 'org-1', 'biz-1'))
+    expect(formatDiagnostic(diagnosticWithoutEligible, 'org-1', 'biz-1'))
       .not.toContain('eligible')
     expect(formatDiagnostic(null, 'org-1', 'biz-1')).toContain('No diagnostic')
     expect(formatCapsuleFilePage({ ...emptyPage, content: [file], empty: false }, 'org-1', 'biz-1'))
@@ -130,7 +130,7 @@ describe('formatting', () => {
   it('projects optional business, diagnostic, and aide fields when present and omits them when absent', () => {
     expect(projectBusiness(business).siret).toBe('123')
     expect(projectBusiness(business).socialReason).toBeUndefined()
-    expect(projectBusiness({ ...business, siret: undefined, socialReason: 'SARL' })).toEqual({
+    expect(projectBusiness({ ...businessWithoutSiret, socialReason: 'SARL' })).toEqual({
       id: bizId,
       name: 'Client',
       organizationId: orgId,
@@ -140,7 +140,7 @@ describe('formatting', () => {
       socialReason: 'SARL',
     })
     expect(projectDiagnostic(diagnostic).totalEligible).toBe(2)
-    expect(projectDiagnostic({ ...diagnostic, totalEligible: undefined }).totalEligible).toBeUndefined()
+    expect(projectDiagnostic(diagnosticWithoutEligible).totalEligible).toBeUndefined()
     expect(projectDiagnostic({
       ...diagnostic,
       completedAt: 'done',
