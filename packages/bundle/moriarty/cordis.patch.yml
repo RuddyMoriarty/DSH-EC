@@ -1,0 +1,65 @@
+# The dsh-moriarty bundle patch: French EC overlay over dsh-base + dsh-web-app.
+# Applied last among shipped bundles. A patch replaces the targeted row's
+# whole config, so each row restates every key it owns.
+#
+# The Unsloth-served local model is the default. `llm-deepseek` stays mounted
+# from base and is unused until the operator selects it. An unreachable
+# baseURL fails the request; there is no silent cloud fallback.
+#
+# MORIARTY_LOCAL_LLM_BASE_URL overrides the 5090 tunnel default without a
+# profile file edit. pi-ai's openai-completions path still requires a bearer;
+# `Authorization: Bearer local` is the keyless-vLLM placeholder (see
+# dsh-llm-pi-ai Known Limitations). A server that rejects that token is
+# configured through the Models page / settings, not by falling back to
+# DeepSeek.
+
+- id: llm-pi-ai
+  config:
+    providers:
+      moriarty-local:
+        displayName: Moriarty Unsloth (5090)
+        api: openai-completions
+        baseURL: !!js process.env.MORIARTY_LOCAL_LLM_BASE_URL || 'http://127.0.0.1:8000/v1'
+        defaultInput: [text, image]
+        headers:
+          Authorization: Bearer local
+        models:
+          - id: moriarty-vl
+            name: Moriarty VL
+            contextWindow: 32768
+            maxTokens: 4096
+            input: [text, image]
+
+- id: agent-default-model
+  config:
+    provider: moriarty-local
+    model: moriarty-vl
+
+- id: system-prompt
+  config:
+    includeHarnessIdentity: false
+    persona: >-
+      Tu es Moriarty, assistant de cabinet d'expertise comptable en France,
+      powered by the {{model}} model. Your working directory is {{cwd}}.
+      Produce sourced deliverables. Cite the file, API, or official text
+      behind every figure or eligibility claim. Do not invent balances,
+      clients, or aides. A successful tool call is not a completed engagement.
+
+- id: agent-presets
+  config:
+    default: moriarty
+
+# Host-plane REST seam. The Cabinet EC preset registers the model-facing
+# tools; this layer owns the service and the moriarty-be HTTP provider.
+# A patch insert is required: targeting a new id at the top level is not
+# how unused rows are added over an empty composed list.
+- insert:
+    - id: moriarty-api
+      name: '@deepseek-ai/dsh-moriarty-api'
+      config:
+        provider: moriarty-http
+    - id: moriarty-api-http
+      name: '@deepseek-ai/dsh-moriarty-api-http'
+      config:
+        baseURL: !!js process.env.MORIARTY_API_BASE_URL || 'https://api.themoriarty.app'
+        accessTokenEnv: MORIARTY_ACCESS_TOKEN

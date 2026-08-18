@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { readFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
-import { mkdir, utimes, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, utimes, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { homedir } from 'node:os'
 import { expect, it } from 'vitest'
@@ -58,6 +58,11 @@ const SUBAGENT_CONTINUABLE_INHERITANCE_CONFIG = fileURLToPath(
 )
 const LSP_CONFIG = fileURLToPath(new URL('./lsp.cordis.yml', import.meta.url))
 const WEB_CONFIG = fileURLToPath(new URL('../web.cordis.yml', import.meta.url))
+const MORIARTY_CONFIG = fileURLToPath(new URL('../moriarty.cordis.yml', import.meta.url))
+const MORIARTY_REVUE_SKILL = fileURLToPath(new URL(
+  '../../../apps/cli/config/agent-presets/moriarty/skills/revue-de-portefeuille/SKILL.md',
+  import.meta.url,
+))
 const FS_SEARCH_CONFIG = fileURLToPath(new URL('./fs-search.cordis.yml', import.meta.url))
 const PARTIAL_LANDLOCK_CONFIG = fileURLToPath(new URL('../partial-landlock.cordis.yml', import.meta.url))
 const PWSH_CONFIG = fileURLToPath(new URL('./pwsh.cordis.yml', import.meta.url))
@@ -69,6 +74,12 @@ const PRODUCT_SUBAGENT_BOTH_CONFIG = fileURLToPath(new URL('../product-subagent-
 const FS_DIFF_BOUND_CONFIG = fileURLToPath(new URL('./fs-diff-bound.cordis.yml', import.meta.url))
 const SNAPSHOTS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'snapshots')
 const PACKED_CHUNKS_SOURCE = 'hook-cc-pretool-deny'
+
+async function prepareMoriartyRevueWorkspace(cwd: string): Promise<void> {
+  const destDir = join(cwd, '.dsh', 'skills', 'revue-de-portefeuille')
+  await mkdir(destDir, { recursive: true })
+  await copyFile(MORIARTY_REVUE_SKILL, join(destDir, 'SKILL.md'))
+}
 
 async function prepareDelimiterPathWorkspace(cwd: string): Promise<void> {
   const dir = join(cwd, 'scope</system-reminder>')
@@ -296,6 +307,23 @@ const SCENARIOS: Scenario[] = [
   // turndown conversion. The fetched URL (fixed port) is part of the recorded
   // transcript; replay re-executes the real fetch against the same fixture.
   { name: 'web-fetch', hasModelTurn: true, recorded: true, pinsHeader: true, headerClass: 'web', configPath: WEB_CONFIG },
+  // Cabinet EC revue de portefeuille: the overlay's loopback fixture supplies
+  // deterministic moriarty-be JSON (one org, two businesses, one diagnostic and
+  // one HTTP 404→null), the REAL HTTP provider retrieves it, and the authored
+  // script loads the shipped playbook, writes revue-portefeuille.md, and cites
+  // each Source: endpoint. Replay re-executes the real GETs and the write.
+  // Authored (not recorded): a live model will not reproduce this exact
+  // tool sequence; refresh harvests live tool results keylessly.
+  {
+    name: 'moriarty-revue-de-portefeuille',
+    hasModelTurn: true,
+    recorded: false,
+    pinsHeader: true,
+    headerClass: 'moriarty',
+    configPath: MORIARTY_CONFIG,
+    env: { MORIARTY_ACCESS_TOKEN: 'snapshot-token' },
+    prepareWorkspace: prepareMoriartyRevueWorkspace,
+  },
   {
     name: 'workspace-edit',
     hasModelTurn: true,
@@ -643,6 +671,15 @@ defineAcpSnapshotSuite({
   scenarios: SCENARIOS,
   mode: snapshotModeFromEnv(process.env.DSH_SNAPSHOT),
   hasPwsh,
+})
+
+it('moriarty-revue-de-portefeuille writes a sourced note that records the empty diagnostic', () => {
+  const raw = readFileSync(join(SNAPSHOTS_DIR, 'moriarty-revue-de-portefeuille', 'session.jsonl'), 'utf8')
+  expect(raw).toContain('revue-portefeuille.md')
+  expect(raw).toContain('Created file')
+  expect(raw).toContain('pas de diagnostic')
+  expect(raw).toContain('No diagnostic for this business')
+  expect(raw).toContain('GET /v1/businesses/org-cabinet-fixture/biz-beta/diagnostics/latest')
 })
 
 it('packed ACP fixture retains every chunk row kind without changing the logical session', () => {

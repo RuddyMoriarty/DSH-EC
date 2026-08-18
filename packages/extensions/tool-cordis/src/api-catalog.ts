@@ -913,6 +913,55 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'moriarty',
+    summary: 'The Moriarty REST service.',
+    description: 'The Moriarty REST service. Registered as `ctx.moriarty` (one instance per context).\n\nSelection never depends on registration order. A configured id that is registered and `available()` wins; otherwise exactly one usable provider is required.',
+    methods: [
+      {
+        signature: 'registerProvider(provider: MoriartyApiProvider): () => void',
+        description: 'Register a REST backend. Throws MoriartyError `MORIARTY_DUPLICATE_PROVIDER` if its id is already registered. Returns a disposer; disposed with the calling fiber.',
+        parameters: [{ name: 'provider', description: 'the provider; its `id` is the registry key.' }],
+        returns: 'the disposer that unregisters the provider.',
+      },
+      {
+        signature: 'async listOrganizations(signal?: AbortSignal): Promise<readonly Organization[]>',
+        description: 'List organizations for the authenticated user (`GET /v1/organizations/me`).',
+        parameters: [{ name: 'signal', description: 'optional cancellation signal forwarded to the provider.' }],
+        returns: 'the organizations the token can see.',
+      },
+      {
+        signature: 'async listBusinesses(request: ListBusinessesRequest, signal?: AbortSignal): Promise<BusinessPage>',
+        description: 'List businesses in one organization (`GET /v1/businesses/{organizationId}/list`).',
+        parameters: [{ name: 'request', description: 'organization and optional page/search.' }, { name: 'signal', description: 'optional cancellation signal forwarded to the provider.' }],
+        returns: 'one page of businesses.',
+      },
+      {
+        signature: 'async getBusiness(request: GetBusinessRequest, signal?: AbortSignal): Promise<Business>',
+        description: 'Load one business (`GET /v1/businesses/{organizationId}/{businessId}`).',
+        parameters: [{ name: 'request', description: 'organization and business ids.' }, { name: 'signal', description: 'optional cancellation signal forwarded to the provider.' }],
+        returns: 'the business record.',
+      },
+      {
+        signature: 'async getLatestDiagnostic(request: GetBusinessRequest, signal?: AbortSignal): Promise<DiagnosticSummary | null>',
+        description: 'Latest diagnostic for a business, or `null` when none exists.',
+        parameters: [{ name: 'request', description: 'organization and business ids.' }, { name: 'signal', description: 'optional cancellation signal forwarded to the provider.' }],
+        returns: 'the latest diagnostic summary, or `null` on HTTP 404.',
+      },
+      {
+        signature: 'async listCapsuleFiles(request: ListCapsuleFilesRequest, signal?: AbortSignal): Promise<CapsuleFilePage>',
+        description: 'List capsule files (`GET /v1/capsule/{organizationId}/{businessId}/files`).',
+        parameters: [{ name: 'request', description: 'organization, business, and optional page.' }, { name: 'signal', description: 'optional cancellation signal forwarded to the provider.' }],
+        returns: 'one page of files.',
+      },
+      {
+        signature: 'async searchFranceAides(request: SearchFranceAidesRequest, signal?: AbortSignal): Promise<FranceAidePage>',
+        description: 'Search the France-aides catalogue (`GET /v1/france-aides`). A catalogue hit is not a client eligibility verdict.',
+        parameters: [{ name: 'request', description: 'optional search text and page.' }, { name: 'signal', description: 'optional cancellation signal forwarded to the provider.' }],
+        returns: 'one page of aides.',
+      },
+    ],
+  },
+  {
     key: 'permissionPresets',
     summary: 'Owns the deployment\'s permission presets and their write path.',
     description: 'Owns the deployment\'s permission presets and their write path. Requires a confining `ctx.shell` executor and `ctx.approval`; unmatched knob values are reported as CUSTOM_PRESET, not an error.',
@@ -2740,8 +2789,28 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type Branded<B extends string> = string & {\n    readonly [BRAND]: B;\n};',
   },
   {
+    name: 'Business',
+    declaration: 'export interface Business {\n    readonly id: BusinessId;\n    readonly name: string;\n    readonly organizationId: OrganizationId;\n    readonly archived: boolean;\n    readonly tags: readonly string[];\n    readonly auditUpdatedAt: string;\n    readonly siret?: string;\n    readonly socialReason?: string;\n}',
+  },
+  {
+    name: 'BusinessId',
+    declaration: 'export type BusinessId = Branded<\'MoriartyBusinessId\'>;',
+  },
+  {
+    name: 'BusinessPage',
+    declaration: 'export interface BusinessPage {\n    readonly content: readonly Business[];\n    readonly totalElements: number;\n    readonly number: number;\n    readonly size: number;\n    readonly empty: boolean;\n}',
+  },
+  {
     name: 'CancelOptions',
     declaration: 'export interface CancelOptions {\n    keepInbox?: boolean | undefined;\n}',
+  },
+  {
+    name: 'CapsuleFile',
+    declaration: 'export interface CapsuleFile {\n    readonly id: string;\n    readonly name: string;\n    readonly contentType: string;\n    readonly type: string;\n    readonly version: number;\n    readonly auditUpdatedAt: string;\n}',
+  },
+  {
+    name: 'CapsuleFilePage',
+    declaration: 'export interface CapsuleFilePage {\n    readonly content: readonly CapsuleFile[];\n    readonly totalElements: number;\n    readonly number: number;\n    readonly size: number;\n    readonly empty: boolean;\n}',
   },
   {
     name: 'ClientResponse',
@@ -2928,6 +2997,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type CredentialRef = Branded<\'CredentialRef\'>;',
   },
   {
+    name: 'DiagnosticSummary',
+    declaration: 'export interface DiagnosticSummary {\n    readonly id: string;\n    readonly businessId: BusinessId;\n    readonly businessName: string;\n    readonly status: string;\n    readonly diagnosticType: string;\n    readonly startedAt: string;\n    readonly completedAt?: string;\n    readonly totalEligible?: number;\n    readonly errorMessage?: string;\n}',
+  },
+  {
     name: 'DiffCallView',
     declaration: 'export interface DiffCallView {\n    card: \'diff\';\n    title: string;\n    diffs: FileDiff[];\n    locations?: FileLocation[];\n}',
   },
@@ -3052,6 +3125,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface FinishReasonMap {\n    \'stop\': {\n        kind: \'stop\';\n    };\n    \'tool-calls\': {\n        kind: \'tool-calls\';\n    };\n    \'max-tokens\': {\n        kind: \'max-tokens\';\n    };\n    \'aborted\': {\n        kind: \'aborted\';\n        failure: LlmFailure;\n    };\n    \'error\': {\n        kind: \'error\';\n        failure: LlmFailure;\n    };\n}',
   },
   {
+    name: 'FranceAide',
+    declaration: 'export interface FranceAide {\n    readonly id: number;\n    readonly nom: string;\n    readonly couvertureGeo: string;\n    readonly status: number;\n    readonly objet?: string;\n}',
+  },
+  {
+    name: 'FranceAidePage',
+    declaration: 'export interface FranceAidePage {\n    readonly content: readonly FranceAide[];\n    readonly totalElements: number;\n    readonly number: number;\n    readonly size: number;\n    readonly empty: boolean;\n}',
+  },
+  {
     name: 'FsDirEntry',
     declaration: 'export interface FsDirEntry {\n    name: string;\n    type: \'file\' | \'directory\' | \'other\';\n    target: FsTarget;\n    version?: FsVersion;\n    size?: number;\n}',
   },
@@ -3106,6 +3187,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'GenericResultView',
     declaration: 'export interface GenericResultView {\n    card: \'generic\';\n    title?: string;\n    content?: ContentBlock[];\n}',
+  },
+  {
+    name: 'GetBusinessRequest',
+    declaration: 'export interface GetBusinessRequest {\n    readonly organizationId: OrganizationId;\n    readonly businessId: BusinessId;\n}',
   },
   {
     name: 'GoalActivation',
@@ -3266,6 +3351,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'KvUnitDescriptor',
     declaration: 'export interface KvUnitDescriptor {\n    readonly name: string;\n    readonly version: number;\n    readonly tables: readonly string[];\n    readonly hasGlobal: boolean;\n}',
+  },
+  {
+    name: 'ListBusinessesRequest',
+    declaration: 'export interface ListBusinessesRequest {\n    readonly organizationId: OrganizationId;\n    readonly page?: number;\n    readonly size?: number;\n    readonly search?: string;\n}',
+  },
+  {
+    name: 'ListCapsuleFilesRequest',
+    declaration: 'export interface ListCapsuleFilesRequest {\n    readonly organizationId: OrganizationId;\n    readonly businessId: BusinessId;\n    readonly page?: number;\n    readonly size?: number;\n}',
   },
   {
     name: 'LlmAdapter',
@@ -3472,12 +3565,24 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ModelModalityMap {\n    text: \'text\';\n    image: \'image\';\n}',
   },
   {
+    name: 'MoriartyApiProvider',
+    declaration: 'export interface MoriartyApiProvider {\n    readonly id: string;\n    available(): boolean;\n    listOrganizations(signal?: AbortSignal): Promise<readonly Organization[]>;\n    listBusinesses(request: ListBusinessesRequest, signal?: AbortSignal): Promise<BusinessPage>;\n    getBusiness(request: GetBusinessRequest, signal?: AbortSignal): Promise<Business>;\n    getLatestDiagnostic(request: GetBusinessRequest, signal?: AbortSignal): Promise<DiagnosticSummary | null>;\n    listCapsuleFiles(request: ListCapsuleFilesRequest, signal?: AbortSignal): Promise<CapsuleFilePage>;\n    searchFranceAides(request: SearchFranceAidesRequest, signal?: AbortSignal): Promise<FranceAidePage>;\n}',
+  },
+  {
     name: 'ObjectJsonSchema',
     declaration: 'export type ObjectJsonSchema = JsonSchemaNode & {\n    type: \'object\';\n};',
   },
   {
     name: 'OneShotSubagentDescriptorData',
     declaration: 'export interface OneShotSubagentDescriptorData extends SubagentDescriptorBase {\n    readonly mode: \'one-shot\';\n    readonly label?: string;\n}',
+  },
+  {
+    name: 'Organization',
+    declaration: 'export interface Organization {\n    readonly id: OrganizationId;\n    readonly name: string;\n    readonly displayName: string;\n}',
+  },
+  {
+    name: 'OrganizationId',
+    declaration: 'export type OrganizationId = Branded<\'MoriartyOrganizationId\'>;',
   },
   {
     name: 'PermissionSelect',
@@ -3710,6 +3815,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SearchFileMatches',
     declaration: 'export interface SearchFileMatches {\n    path: string;\n    matches: SearchLineMatch[];\n}',
+  },
+  {
+    name: 'SearchFranceAidesRequest',
+    declaration: 'export interface SearchFranceAidesRequest {\n    readonly search?: string;\n    readonly page?: number;\n    readonly size?: number;\n}',
   },
   {
     name: 'SearchLineMatch',

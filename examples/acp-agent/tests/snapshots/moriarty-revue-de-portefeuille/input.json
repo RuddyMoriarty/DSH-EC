@@ -1,0 +1,14 @@
+{
+  "steps": [
+    {
+      "op": "initialize"
+    },
+    {
+      "op": "newSession"
+    },
+    {
+      "op": "prompt",
+      "text": "Load the revue-de-portefeuille skill with the skill tool, then follow it. Use Moriarty REST tools to list the current organization and its businesses, then get the latest diagnostic for each business. Write revue-portefeuille.md in the working directory with the sourced note. Then reply with exactly DONE."
+    }
+  ]
+}

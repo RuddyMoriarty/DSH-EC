@@ -1,0 +1,33 @@
+# Keyless replay counterpart to moriarty.cordis.yml: the Moriarty stack and
+# loopback fixture server stay real (each tool call re-executes the actual
+# HTTP GET and markdown formatting); only the model adapter is replaced by replay.
+- id: base
+  name: '@deepseek-ai/cordis-plugin-include'
+  config:
+    path: ./cordis.yml
+    patches:
+      - id: llm-deepseek
+        name: '@deepseek-ai/dsh-llm-deepseek'
+        disabled: true
+      - insert:
+          - id: moriarty-api
+            name: '@deepseek-ai/dsh-moriarty-api'
+            config:
+              provider: moriarty-http
+          - id: moriarty-api-http
+            name: '@deepseek-ai/dsh-moriarty-api-http'
+            config:
+              baseURL: 'http://127.0.0.1:43118'
+          - id: moriarty-api-fixture
+            name: './moriarty-api-fixture-server.mjs'
+          - id: tool-moriarty
+            name: '@deepseek-ai/dsh-tool-moriarty'
+          - id: llm-replay
+            name: '@deepseek-ai/dsh-llm-replay'
+            config:
+              providers:
+                - id: deepseek-official
+                  name: DeepSeek
+                  models:
+                    - id: deepseek-v4-flash
+                    - id: deepseek-v4-pro

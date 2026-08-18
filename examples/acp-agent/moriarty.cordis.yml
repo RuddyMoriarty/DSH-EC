@@ -1,0 +1,22 @@
+# Moriarty REST composition for the revue-de-portefeuille snapshot: the
+# Moriarty seam, the real HTTP provider pointed at the loopback fixture, the
+# model-facing REST tools, and the fixture server — deterministic JSON, no
+# external network, in recording and replay alike.
+- id: base
+  name: '@deepseek-ai/cordis-plugin-include'
+  config:
+    path: ./cordis.yml
+    patches:
+      - insert:
+          - id: moriarty-api
+            name: '@deepseek-ai/dsh-moriarty-api'
+            config:
+              provider: moriarty-http
+          - id: moriarty-api-http
+            name: '@deepseek-ai/dsh-moriarty-api-http'
+            config:
+              baseURL: 'http://127.0.0.1:43118'
+          - id: moriarty-api-fixture
+            name: './moriarty-api-fixture-server.mjs'
+          - id: tool-moriarty
+            name: '@deepseek-ai/dsh-tool-moriarty'

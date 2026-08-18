@@ -42,7 +42,7 @@ const MINIMAL_BASH_DESCRIPTION = `Run commands in a bash shell
 /**
  * Boot the shipped Web composition, minus the rows that would bind a port,
  * touch the network, or write outside the test. Everything that decides an
- * agent's capabilities is the real thing, including both shipped presets.
+ * agent's capabilities is the real thing, including the shipped presets.
  */
 async function bootWeb(
   settingsFile: string,
@@ -94,6 +94,12 @@ async function bootWeb(
     { insert: [
       { id: 'directory-picker-browse', name: '@deepseek-ai/dsh-host-directory-picker-browse' },
       { id: 'ui-directory-picker-browse', name: '@deepseek-ai/dsh-client-ui-directory-picker-browse' },
+      // The shipped web profile does not mount ctx.moriarty. The Cabinet EC
+      // preset injects that service, so this extra-insert is the host row the
+      // Moriarty bundle would have added — without it, mount fails loudly
+      // rather than composing a catalog that cannot run.
+      { id: 'moriarty-api', name: '@deepseek-ai/dsh-moriarty-api', config: { provider: 'moriarty-http' } },
+      { id: 'moriarty-api-http', name: '@deepseek-ai/dsh-moriarty-api-http' },
     ] },
     // The roster AppCLIEntry would patch in; only the shipped root, so a
     // developer's own `~/.dsh/.preset` cannot change this test's outcome.
@@ -194,10 +200,10 @@ describe('the shipped Web composition', () => {
     }
   })
 
-  it('supplies both shipped presets, and only those, from the system root', async () => {
+  it('supplies every shipped preset, and only those, from the system root', async () => {
     const listed = await ctx.agentPresets.list()
 
-    expect(listed.map(preset => preset.id).sort()).toEqual(['code', 'cordis', 'minimal', 'standard'])
+    expect(listed.map(preset => preset.id).sort()).toEqual(['code', 'cordis', 'minimal', 'moriarty', 'standard'])
     expect(listed.every(preset => preset.trust === 'system')).toBe(true)
     expect(ctx.agentPresets.defaultId).toBe('standard')
   })
@@ -219,6 +225,32 @@ describe('the shipped Web composition', () => {
         'subagent', 'subagent_fork', 'todo_write', 'update_goal', 'web_search',
         'workflow', 'write',
       ])
+    } finally {
+      await handle.dispose()
+    }
+  })
+
+  it('composes the standard catalog plus Moriarty REST tools from `moriarty`', async () => {
+    const handle = await ctx.agents.create({
+      sessionId: SessionId('preset-moriarty'),
+      setup: agentCtx => ctx.agentPresets.mount(agentCtx, 'moriarty').then(() => undefined),
+    })
+    try {
+      expect(toolNames(ctx, handle.agent).filter(name => name !== 'glob' && name !== 'grep')).toEqual([
+        'ask_user_question', 'bash', 'create_goal', 'edit', 'exit_plan_mode',
+        'get_goal', 'interrupt_agent', 'job_kill', 'job_list', 'job_output', 'list_agents',
+        'moriarty_get_business', 'moriarty_get_latest_diagnostic', 'moriarty_list_businesses',
+        'moriarty_list_capsule_files', 'moriarty_list_organizations', 'moriarty_search_france_aides',
+        'ralph', 'read', 'read_image', 'send_message', 'skill',
+        'subagent', 'subagent_fork', 'todo_write', 'update_goal', 'web_search',
+        'workflow', 'write',
+      ])
+
+      // The preset's own playbook registers into ITS layer of the host
+      // registry: the Cabinet EC agent's view carries it, the global view does not.
+      const scoped = (await ctx.skills.list({ scope: handle.agent })).map(skill => skill.name)
+      expect(scoped).toContain('revue-de-portefeuille')
+      expect((await ctx.skills.list()).map(skill => skill.name)).not.toContain('revue-de-portefeuille')
     } finally {
       await handle.dispose()
     }

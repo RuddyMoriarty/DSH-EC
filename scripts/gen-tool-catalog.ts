@@ -54,6 +54,8 @@ import * as ToolGoal from '@deepseek-ai/dsh-tool-goal'
 import * as ToolSchedule from '@deepseek-ai/dsh-schedule'
 import Lsp from '@deepseek-ai/dsh-lsp'
 import * as ToolLsp from '@deepseek-ai/dsh-tool-lsp'
+import MoriartyRuntime from '@deepseek-ai/dsh-moriarty-api'
+import * as ToolMoriarty from '@deepseek-ai/dsh-tool-moriarty'
 import * as ToolSkill from '@deepseek-ai/dsh-tool-skill'
 import * as ToolSessionQuery from '@deepseek-ai/dsh-tool-session-query'
 import * as ToolTasks from '@deepseek-ai/dsh-tool-jobs'
@@ -389,6 +391,19 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'The lsp tool keeps provider selection and language-server subprocesses behind ctx.lsp, so its model-visible schema stays stable across providers. Requires a registered provider (e.g. `@deepseek-ai/dsh-lsp-stdio`) at runtime; without one, a query returns the structured `LSP_UNAVAILABLE` error rather than changing the schema.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-moriarty',
+    dir: 'tool-moriarty',
+    source: 'packages/moriarty/tool-moriarty/src/index.ts',
+    requires: ['ctx.tools', 'ctx.moriarty', 'ctx.systemPrompt'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(MoriartyRuntime)
+      await ctx.plugin(ToolMoriarty)
+    },
+    note:
+      'The moriarty_* tools keep provider selection and HTTP behind ctx.moriarty, so model-visible schemas stay stable across backends. Requires a registered provider (e.g. `@deepseek-ai/dsh-moriarty-api-http`) at runtime; without one, a call returns the structured `MORIARTY_PROVIDER_UNAVAILABLE` error rather than changing the schema.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-ralph',

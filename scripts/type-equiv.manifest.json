@@ -1346,6 +1346,36 @@
       "source": "packages/web/web/src/types.ts"
     },
     {
+      "doc": "docs/subsystems/moriarty.md",
+      "symbol": "Organization",
+      "source": "packages/moriarty/moriarty-api/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/moriarty.md",
+      "symbol": "Business",
+      "source": "packages/moriarty/moriarty-api/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/moriarty.md",
+      "symbol": "DiagnosticSummary",
+      "source": "packages/moriarty/moriarty-api/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/moriarty.md",
+      "symbol": "CapsuleFile",
+      "source": "packages/moriarty/moriarty-api/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/moriarty.md",
+      "symbol": "FranceAide",
+      "source": "packages/moriarty/moriarty-api/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/moriarty.md",
+      "symbol": "MoriartyApiProvider",
+      "source": "packages/moriarty/moriarty-api/src/types.ts"
+    },
+    {
       "doc": "docs/subsystems/spill.md",
       "symbol": "SaveTextSpill",
       "source": "packages/spill/spill/src/types.ts"
